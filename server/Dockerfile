@@ -1,7 +1,7 @@
 FROM python:3
 WORKDIR .
 COPY . .
-CMD ["server-main.py $(hostname -i) 4444"]
+CMD ["-u", "server-main.py"]
 ENTRYPOINT ["python3"]
 LABEL name="a1"
 

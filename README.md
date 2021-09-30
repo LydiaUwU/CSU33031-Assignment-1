@@ -1,6 +1,18 @@
 # CSU33031-Assignment-1
 My implementation for CSU33031 Computer Networks assignment 1.
 
+## Packet format
+``<packet_type>:<sender_type>:<sender_id>:<data>``
+
+## SUCCESS PT1
+- Server and Sensor programs fleshed out
+- Server accepts three request types indicated by ack, new and upd
+- Client sends new request to server when initialising and server replies with a unique numerical identifier for the client
+- Once initialised client sends random dummy data to the server using upd request
+- Server stores any received upd requests in its list of devices corresponding to the sender's type and ID
+- Server and client capable of queueing requests to send, and removes each once they receive a corresponding acknowledgement.
+- Unacknowledged requests will be resent until acknowledgement is received
+
 ## Software used
 - Python 3
 - Docker
@@ -14,15 +26,16 @@ My implementation for CSU33031 Computer Networks assignment 1.
 
 ## Todo list
 - ✅ Write setup process
-- Create network layout diagram
-- Create docker network
-- Create docker machines for server, sensors and actuators
-- Ensure that traffic can be monitored with wireshark
-- Create script to allow user to easily instantiate and launch the network
+- ✅ Create network layout diagram
+- ✅ Create docker network
+- ✅ Create docker machines for server, sensors and actuators
+- ✅ Ensure that traffic can be monitored with wireshark
+- ✅ Create script to allow user to easily instantiate and launch the network
   - Research passing arguments via dockerfile (IP and port for server and actuator)
 
 ### Server
-- Receive information from sensors
+- ✅ Instantiate each new device with a unique ID
+- ✅ Receive information from sensors
 - Flask webpage for client
 - Allow client to subscribe to available sensors
 - Display subscribed sensor information on webpage
@@ -30,9 +43,10 @@ My implementation for CSU33031 Computer Networks assignment 1.
 - Allow client to send commands to actuators
 
 ### Sensors
+- ✅ Connects to server to receive unique ID when starting
 - Create two types of sensor (toggle and variable)
-- Send information to server at regular intervals
-- Random dummy data that changes over time
+- ✅ Send information to server at regular intervals
+- ✅ Random dummy data that changes over time
 
 ### Actuators
 - Create two types of actuator (toggle and variable)

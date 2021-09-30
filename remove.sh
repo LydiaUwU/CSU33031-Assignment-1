@@ -22,13 +22,17 @@ sudo docker container rm $(sudo docker container ls -a -q -f name="a1-*") > /dev
 
 # List images to be removed
 echo -e "\n🗑 Removing the following images:"
-sudo docker image ls -a -f label=name="a1"
+sudo docker image ls -f label=name="a1"
 sudo docker image rm $(sudo docker image ls -q -f label=name="a1") > /dev/null
 
 # List network to be removed
-echo -e "\n🗑 Removing the following network:"
-sudo docker network ls -f name="a1-*"
-sudo docker network rm $(sudo docker network ls -q -f name="a1-*") > /dev/null
+echo -e "\n🗑 Following networks to be removed:";
+sudo docker network ls -f name="a1-*";
+read -p "❓ Would you like to remove the above network: [Y/n] " yn
+case $yn in
+    [Yy]* ) echo -e "\n🗑 Removing network:";
+            sudo docker network rm $(sudo docker network ls -q -f name="a1-*") > /dev/null;;
+esac
 
 # List updated containers, images and network
 echo -e "\n🐳 Updated docker containers"
