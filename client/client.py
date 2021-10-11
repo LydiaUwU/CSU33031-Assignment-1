@@ -1,20 +1,23 @@
-# Sensor device for sending dummy data to Server
+# Client providing CLI for user to interact with network
 # Author: Lydia MacBride
 
 import socket
-import random
+import devices
 
 
-print("Starting sensor")
+print("Starting Client")
 
 # Device parameters
 port = 4444
 buff_size = 4096
-dev_type = "1"
+dev_type = "3"
 dev_id = ""
-dev_value = "20"
 server_ip = ""
 queue = list()
+
+# Network devices
+sensors = list()
+actuators = list()
 
 # Create socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -22,20 +25,6 @@ s.settimeout(20)
 # Bind the socket it to the port
 sensor_address = ('0.0.0.0', port)
 s.bind(sensor_address)
-
-
-# Add packet to queue
-def queue_packet(packet):
-    print("Adding packet to queue")
-
-    pck_exists = False
-    for i in queue:
-        pck_exists = i[1] == packet[1]
-        print("Checking: " + i[1] + ", " + packet[1] + ", match: " + str(pck_exists))
-        break
-
-    if len(queue) == 0 or not pck_exists:
-        queue.append(packet)
 
 
 # Send acknowledgement to given ip
@@ -48,13 +37,43 @@ def send_ack(ack_ip, ack_type):
     queue_packet([ack_ip[0], ack_data])
 
 
-# Send dev_value as upd packet
-def send_value():
-    print("Sending value to server")
-    val_data = "upd:" + str(dev_type) + ":" + str(dev_id) + ":" + str(dev_value)
+# TODO: Process inputs from user
+# Process input from user
+def proc_input():
+    user_in = input("✨〉")
 
-    # Save packet to queue
-    queue_packet([server_ip, val_data])
+    # TODO: sync: Sync device list with server
+    if user_in == "sync":
+        print("Syncing devices with server")
+
+    # TODO: ls (-sensors, -actuators): List sensor/actuator devices
+    elif user_in[0:2] == "ls":
+        # TODO: Process arguments
+        print("Listing devices")
+
+    # sub <ID>: Subscribe to sensor data
+    elif user_in[0:3] == "sub":
+        sub_data = "sub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
+        print("Subscribing to device: " + sub_data)
+        queue_packet([server_ip, sub_data])
+
+    # pub <ID> <value>: Publish command to actuator
+    elif user_in[0:3] == "pub":
+        pub_data = "pub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
+        print("Publishing command: " + pub_data)
+        queue_packet([server_ip, pub_data])
+
+    # help: Print available commands
+    elif user_in == "help":
+        print("sync                         Sync device list with server\n" +
+              "ls (-sensors, -actuators)    List sensor/actuator devices\n" +
+              "sub <Type>:<ID>              Subscribe to sensor data\n" +
+              "pub <Type>:<ID> <value>      Publish command to actuator\n" +
+              "help                         print available commands")
+
+    # Invalid input
+    else:
+        print("Invalid input. Run help to see available commands")
 
 
 # Process incoming packets
@@ -88,9 +107,25 @@ def rec_packet():
                 queue.remove(i)
                 break
 
+    # TODO: upd, syn packet types
+
     else:
         # Send acknowledgement
         send_ack(pck_address, pck_str)
+
+
+# Add packet to queue
+def queue_packet(packet):
+    print("Adding packet to queue")
+
+    pck_exists = False
+    for i in queue:
+        pck_exists = i[1] == packet[1]
+        print("Checking: " + i[1] + ", " + packet[1] + ", match: " + str(pck_exists))
+        break
+
+    if len(queue) == 0 or not pck_exists:
+        queue.append(packet)
 
 
 # Send packets from queue
@@ -147,20 +182,8 @@ while dev_id == "":
             print("New device ID: " + new_arr[3])
             dev_id = new_arr[3]
 
-
-# Main loop
+# Main Loop
 while True:
-    # TODO: Put this on its own thread and use a timer
-    # Generate dev_value and add packet to queue if theres no current outgoing update
-    outgoing_upd = False
-    for i in queue:
-        if i[1][0:3] == "upd":
-            outgoing_upd = True
-
-    if not outgoing_upd:
-        dev_value = str(float(dev_value) + random.random() - 0.5)
-        send_value()
-
-    # Process incoming packets and send any queued packets
-    rec_packet()
+    proc_input()
+    rec_packet()  # TODO: Run in thread
     send_packet()

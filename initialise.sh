@@ -21,6 +21,13 @@ sudo docker container create --name a1-server --cap-add=ALL a1-server
 echo -e "\n🌐 Connecting container to network"
 sudo docker network connect a1-network a1-server
 
+# Create client
+echo -e "\n🌠 Creating client"
+sudo docker build -t a1-client ./client
+sudo docker container create --name a1-client --cap-add=ALL a1-client
+echo -e "\n🌐 Connecting container to network"
+sudo docker network connect a1-network a1-client
+
 # Create sensors
 echo -e "\n🦉 Creating sensor(s)"
 sudo docker build -t a1-sensor ./sensor
@@ -28,16 +35,18 @@ sudo docker build -t a1-sensor ./sensor
 for ((i=0; i < sensor_count; i++)) do
   sudo docker container create --name "a1-sensor$i" --cap-add=ALL a1-sensor
   echo -e "\n🌐 Connecting container a1-sensor$i to network"
-  sudo docker network connect a1-network a1-sensor$i
+  sudo docker network connect a1-network a1-sensor"$i"
 done
 
 # Create actuators
-# TODO: Accept argument to create multiple
-# echo -e "\n🦉 Creating actuator(s)"
-# sudo docker build -t a1-actuator ./actuator
-# sudo docker container create --name a1-actuator --cap-add=ALL a1-actuator
-# echo -e "\n🌐 Connecting container to network"
-# sudo docker network connect a1-network a1-actuator
+ echo -e "\n🏃 Creating actuator(s)"
+ sudo docker build -t a1-actuator ./actuator
+
+ for ((i=0; i < actuator_count; i++)) do
+   sudo docker container create --name "a1-actuator" --cap-add=ALL a1-actuator
+   echo -e "\n🌐 Connecting container a1-actuator$i to network"
+   sudo docker network connect a1-network a1-actuator"$i"
+ done
 
 # List created containers
 echo -e "\n🐳 The folllowing containers were created"

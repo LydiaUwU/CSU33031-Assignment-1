@@ -80,7 +80,7 @@ def rec_packet():
     # Process various commands from devices
     # Acknowledge packets
     if pck_arr[0] == "ack":
-        print("Acknowledgment from: " + pck_arr[1])
+        print("Acknowledgment from: " + pck_arr[1] + ":" + pck_arr[2])
 
         # Pull ack_type from packet
         ack_type = ""

@@ -32,15 +32,21 @@ My implementation for CSU33031 Computer Networks assignment 1.
 - ✅ Ensure that traffic can be monitored with wireshark
 - ✅ Create script to allow user to easily instantiate and launch the network
   - Research passing arguments via dockerfile (IP and port for server and actuator)
+- Revise network topology for client CLI instead of websites.
 
 ### Server
 - ✅ Instantiate each new device with a unique ID
 - ✅ Receive information from sensors
-- Flask webpage for client
 - Allow client to subscribe to available sensors
-- Display subscribed sensor information on webpage
-- Basic but not programmer art website layout
+- Publish sensor/actuator info to clients
 - Allow client to send commands to actuators
+
+### Client
+- Receive and process commands from user
+  - Send appropriate packets based on commands
+- ~~Flask webpage for client~~
+- Display subscribed sensor information on ~~webpage~~ client CLI
+- ~~Basic but not programmer art website layout~~
 
 ### Sensors
 - ✅ Connects to server to receive unique ID when starting
