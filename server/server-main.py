@@ -1,6 +1,5 @@
 # Main server script to initialise, control and monitor devices
 # Author: Lydia MacBride
-# TODO: Send command packet to actuators [cmd:0:0:<dev_value>]
 
 import socket
 import devices
@@ -16,6 +15,7 @@ buff_size = 4096
 # Network devices
 sensors = list()
 actuators = list()
+clients = list()
 
 # Packets to send
 # List contains pairs of [dest_ip, data] that are awaiting acknowledgement
@@ -54,9 +54,9 @@ def send_ack(ack_ip, ack_type):
 
 
 # Send device id
-def send_dev_id(dev_ip, dev_id):
+def send_dev_id(dev_ip, dev_type, dev_id):
     print("Sending device information to: " + dev_ip[0])
-    dev_data = "new:0:0:" + str(dev_id)  # 0:0 to denote type server
+    dev_data = "new:0:0:" + str(dev_type) + ":" + str(dev_id)  # 0:0 to denote type server
 
     # Save packet to queue
     queue_packet([dev_ip, dev_data])
@@ -83,13 +83,12 @@ def rec_packet():
         print("Acknowledgment from: " + pck_arr[1] + ":" + pck_arr[2])
 
         # Pull ack_type from packet
-        ack_type = ""
-        for i in range(3, len(pck_arr)):
-            ack_type += pck_arr[i] + (":" if i < len(pck_arr) - 1 else "")
+        ack_type = pck_str[8:]
 
         # Remove queued request if match found
-        print("Checking for acknowledgment: " + ack_type)
+        # print("Checking for acknowledgment: " + ack_type)
         for i in queue:
+            print("Checking for acknowledgment: " + ack_type + " against: " + i[1])
             if i[1] == ack_type:
                 queue.remove(i)
 
@@ -99,13 +98,14 @@ def rec_packet():
 
         # Get device type and generate dev_id
         dev_type = pck_arr[1]
-        dev_id = len(sensors) if dev_type == '1' else len(actuators)
+        # TODO: Revise this god awful line of code
+        dev_id = len(sensors) if dev_type == '1' else (len(actuators) if dev_type == '2' else len(clients))
 
         # Check that ip isn't already added
         dev_found = False
-        for i in (sensors if dev_type == '1' else actuators):
+        for i in (sensors if dev_type == '1' else (actuators if dev_type == '2' else clients)):
             if i.dev_address == pck_address[0]:
-                send_dev_id(pck_address[0], dev_id)
+                send_dev_id(pck_address[0], dev_type, dev_id)
                 dev_found = True
                 break
 
@@ -127,11 +127,15 @@ def rec_packet():
                 for i in actuators:
                     print("Actuator: " + str(i.get_dev_id()))
 
-            # Send device id back to device
-            send_dev_id(pck_address[0], dev_id)
+            elif dev_type == '3':
+                clients.append(new_dev)
 
-        # Send acknowledgement
-        send_ack(pck_address[0], pck_str)
+                # Print current clients
+                for i in clients:
+                    print("Client: " + str(i.get_dev_id()))
+
+            # Send device id back to device
+            send_dev_id(pck_address[0], dev_type, dev_id)
 
     # Device update packets
     elif pck_arr[0] == "upd":
@@ -148,7 +152,56 @@ def rec_packet():
                 print("Updated device value for: " + dev_type + ":" + dev_id + ", to: " + dev_value)
                 break
 
-        # Send acknowledgement
+    # Client sync packets
+    elif pck_arr[0] == "syn":
+        dev_type = pck_arr[1]
+        dev_id = pck_arr[2]
+
+        print("Syncing devices with client: " + dev_type + ":" + dev_id)
+
+        # Sync sensors
+        for i in sensors:
+            # Send device value if client is subscribed to sensor
+            syn_value = i.dev_value if int(i.dev_id) in clients[int(dev_id)].dev_subs else None
+            syn_data = "syn:" + str(i.dev_type) + ":" + str(i.dev_id) + ":" + str(syn_value)
+            queue_packet([clients[int(dev_id)].dev_address, syn_data])
+
+        # Sync actuators
+        for i in actuators:
+            syn_data = "syn:" + str(i.dev_type) + ":" + str(i.dev_id) + ":" + str(i.dev_value)
+            queue_packet([clients[int(dev_id)].dev_address, syn_data])
+
+        # Send sync end signal
+        print("Sending sync end signal")
+        syn_data = "syn:end:0:0"
+        queue_packet([clients[int(dev_id)].dev_address, syn_data])
+
+    # Client subscription packets
+    elif pck_arr[0] == "sub":
+        dev_type = pck_arr[1]
+        dev_id = pck_arr[2]
+        dev_sub_id = pck_arr[4]
+
+        if int(dev_id) <= len(sensors):
+            print("Subscription request from: " + dev_type + ":" + dev_id)
+            clients[int(dev_id)].dev_subs.append(dev_sub_id)
+
+    # Client publish packets
+    elif pck_arr[0] == "pub":
+        dev_type = pck_arr[1]
+        dev_id = pck_arr[2]
+        dev_data = pck_arr[3]
+
+        if int(dev_id) <= len(actuators):
+            print("Publish request from: " + dev_type + ":" + dev_id)
+            pub_data = "pub:" + dev_type + ":" + dev_id + ":" + dev_data
+            queue_packet([actuators[int(dev_id)].dev_address, pub_data])
+
+    else:
+        print("Unknown packet type received")
+
+    # Send acknowledgement
+    if pck_arr[0] != "ack":
         send_ack(pck_address[0], pck_str)
 
 

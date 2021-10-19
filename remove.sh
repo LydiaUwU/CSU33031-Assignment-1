@@ -15,11 +15,13 @@ sudo docker network ls
 echo -e "\n💀 Killing containers"
 sudo docker container kill $(sudo docker container ls -a -q -f name="a1-*") > /dev/null
 
+# TODO: Client not being removed properly
 # List containers to be removed
 echo -e "\n🗑 Removing the following containers:"
 sudo docker container ls -a -f name="a1-*"
 sudo docker container rm $(sudo docker container ls -a -q -f name="a1-*") > /dev/null
 
+# TODO: Client not being removed properly
 # List images to be removed
 echo -e "\n🗑 Removing the following images:"
 sudo docker image ls -f label=name="a1"

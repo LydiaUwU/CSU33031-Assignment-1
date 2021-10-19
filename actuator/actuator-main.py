@@ -28,9 +28,9 @@ def queue_packet(packet):
     print("Adding packet to queue")
 
     pck_exists = False
-    for i in queue:
-        pck_exists = i[1] == packet[1]
-        print("Checking: " + i[1] + ", " + packet[1] + ", match: " + str(pck_exists))
+    for pck in queue:
+        pck_exists = pck[1] == packet[1]
+        print("Checking: " + pck[1] + ", " + packet[1] + ", match: " + str(pck_exists))
         break
 
     if len(queue) == 0 or not pck_exists:
@@ -77,9 +77,7 @@ def rec_packet():
         print("Acknowledgment from: " + pck_arr[1] + ":" + pck_arr[2])
 
         # Pull ack_type from packet
-        ack_type = ""
-        for i in range(3, len(pck_arr)):
-            ack_type += pck_arr[i] + (":" if i < len(pck_arr) - 1 else "")
+        ack_type = pck_str[8:]
 
         # Remove queued request if match found
         for i in queue:
@@ -87,9 +85,9 @@ def rec_packet():
                 queue.remove(i)
                 break
 
-    # TODO: Update packet
-    if pck_arr[0] == "upd":
-        print("Update from: " + pck_arr[1] + ":" + pck_arr[2] + ", Containing: " + pck_arr[3])
+    # Publish command packet
+    if pck_arr[0] == "pub":
+        print("Publish command from: " + pck_arr[1] + ":" + pck_arr[2] + ", Containing: " + pck_arr[3])
 
         global dev_value
         dev_value = pck_arr[3]  # update dev_value with incoming data
@@ -145,13 +143,13 @@ while dev_id == "":
         print("Received device information packet: " + new_str)
 
         if new_arr[0] == "new":
+            # Update device info
+            print("New device ID: " + new_arr[4])
+            dev_id = new_arr[4]
+
             # Send acknowledgement
             print("Sending acknowledgement")
             send_ack(new_address, new_str)
-
-            # Update device info
-            print("New device ID: " + new_arr[3])
-            dev_id = new_arr[3]
 
 
 # Main loop

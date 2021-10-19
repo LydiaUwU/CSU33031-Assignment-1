@@ -3,6 +3,12 @@ My implementation for CSU33031 Computer Networks assignment 1.
 
 ## Packet format
 ``<packet_type>:<sender_type>:<sender_id>:<data>``
+- `ack` - Acknowledgement packet
+- `new` - Sent by any initialising device to server to request for a unique ID
+- `upd` - Sent from sensors/actuators to the server containing their current data, passed to clients
+- `syn` - Device list sync request from client to server
+- `sub` - Sent from client to subscribe to data from a given sensor
+- `pub` - Sent from client to publish a command to an actuator
 
 ## SUCCESS PT1
 - Server and Sensor programs fleshed out
@@ -31,8 +37,9 @@ My implementation for CSU33031 Computer Networks assignment 1.
 - ✅ Create docker machines for server, sensors and actuators
 - ✅ Ensure that traffic can be monitored with wireshark
 - ✅ Create script to allow user to easily instantiate and launch the network
-  - Research passing arguments via dockerfile (IP and port for server and actuator)
+  - ~~Research passing arguments via dockerfile (IP and port for server and actuator)~~
 - Revise network topology for client CLI instead of websites.
+- Move individual packet/command functionality to individual methods
 
 ### Server
 - ✅ Instantiate each new device with a unique ID

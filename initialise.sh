@@ -53,11 +53,11 @@ echo -e "\n🐳 The folllowing containers were created"
 sudo docker container ls -a -f name="a1-*"
 
 # Ask input on whether to launch or not
-echo -e "\n"
-read -p "❓ Do you want to launch the created containers? [Y/n] " yn
-case $yn in
-    [Yy]* ) echo -e "\n"; ./launch.sh;;
-esac
+# echo -e "\n"
+# read -p "❓ Do you want to launch the created containers? [Y/n] " yn
+# case $yn in
+#    [Yy]* ) echo -e "\n"; ./launch.sh;;
+# esac
 
 # Finished!
 echo -e "\n😺 All done initialising!"

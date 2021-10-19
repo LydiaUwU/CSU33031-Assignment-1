@@ -6,4 +6,3 @@ ENTRYPOINT ["python3"]
 LABEL name="a1"
 
 EXPOSE 4444
-EXPOSE 5000

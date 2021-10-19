@@ -13,6 +13,7 @@ class Device:
         self.dev_type = dev_type
         self.dev_id = dev_id
         self.dev_address = dev_address
+        self.dev_subs = list()  # Only used by client devices
         self.dev_value = None
 
     def update(self, dev_value):

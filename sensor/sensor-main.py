@@ -78,9 +78,7 @@ def rec_packet():
         print("Acknowledgment from: " + pck_arr[1] + ":" + pck_arr[2])
 
         # Pull ack_type from packet
-        ack_type = ""
-        for i in range(3, len(pck_arr)):
-            ack_type += pck_arr[i] + (":" if i < len(pck_arr) - 1 else "")
+        ack_type = pck_str[8:]
 
         # Remove queued request if match found
         for i in queue:
@@ -139,13 +137,13 @@ while dev_id == "":
         print("Received device information packet: " + new_str)
 
         if new_arr[0] == "new":
+            # Update device info
+            print("New device ID: " + new_arr[4])
+            dev_id = new_arr[4]
+
             # Send acknowledgement
             print("Sending acknowledgement")
             send_ack(new_address, new_str)
-
-            # Update device info
-            print("New device ID: " + new_arr[3])
-            dev_id = new_arr[3]
 
 
 # Main loop
