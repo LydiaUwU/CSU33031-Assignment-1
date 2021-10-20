@@ -43,7 +43,7 @@ done
  sudo docker build -t a1-actuator ./actuator
 
  for ((i=0; i < actuator_count; i++)) do
-   sudo docker container create --name "a1-actuator" --cap-add=ALL a1-actuator
+   sudo docker container create --name "a1-actuator$i" --cap-add=ALL a1-actuator
    echo -e "\n🌐 Connecting container a1-actuator$i to network"
    sudo docker network connect a1-network a1-actuator"$i"
  done

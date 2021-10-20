@@ -1,7 +1,10 @@
 # Actuator device to receive commands from Server
 # Author: Lydia MacBride
+# TODO: Gets stuck in loop sending new packet, most likely missing call to sleep in SendPacket
+# TODO: Probably just remove threading from this, I didn't mean to implement it here
 
 import socket
+import threading
 
 
 print("Starting actuator")
@@ -56,6 +59,7 @@ def send_value():
     queue_packet([server_ip, val_data])
 
 
+# TODO: Put this in thread
 # Process incoming packets
 def rec_packet():
     print("Awaiting packet")
@@ -80,9 +84,9 @@ def rec_packet():
         ack_type = pck_str[8:]
 
         # Remove queued request if match found
-        for i in queue:
+        for pck in queue:
             if i[1] == ack_type:
-                queue.remove(i)
+                queue.remove(pck)
                 break
 
     # Publish command packet
@@ -97,19 +101,26 @@ def rec_packet():
         send_ack(pck_address, pck_str)
 
 
+# TODO: Multi-thread this
 # Send packets from queue
-def send_packet():
-    for i in queue:
-        print("Sending packet: " + i[1] + ", To: " + i[0])
-        s.sendto(i[1].encode("utf-8"), (i[0], port))
+class SendPacket (threading.Thread):
+    def run(self):
+        while True:
+            for pck in queue:
+                print("Sending packet: " + pck[1] + ", To: " + pck[0])
+                s.sendto(pck[1].encode("utf-8"), (pck[0], port))
 
-        # If i is an acknowledge packet, remove it from queue
-        if i[1][0:3] == "ack":
-            print("Removing acknowledgment: " + i[1])
-            queue.remove(i)
+                # If i is an acknowledge packet, remove it from queue
+                if pck[1][0:3] == "ack":
+                    print("Removing acknowledgment: " + pck[1])
+                    queue.remove(pck)
 
 
 # Initialisation
+# Start SendPacket thread
+send_packet = SendPacket()
+send_packet.start()
+
 # Get server IP
 print("Getting server IP")
 while True:
@@ -125,7 +136,6 @@ while dev_id == "":
     print("Sending device information request to server")
     new_data = "new:" + dev_type
     queue_packet([server_ip, new_data])
-    send_packet()
 
     # Receive device info from server
     print("Awaiting packet from server")
@@ -151,7 +161,6 @@ while dev_id == "":
             print("Sending acknowledgement")
             send_ack(new_address, new_str)
 
-
 # Main loop
 while True:
     # TODO: Only send status on receiving a command
@@ -165,4 +174,3 @@ while True:
 
     # Process incoming packets and send any queued packets
     rec_packet()
-    send_packet()

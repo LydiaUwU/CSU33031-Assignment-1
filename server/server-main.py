@@ -2,6 +2,8 @@
 # Author: Lydia MacBride
 
 import socket
+import threading
+import time
 import devices
 
 
@@ -137,6 +139,11 @@ def rec_packet():
             # Send device id back to device
             send_dev_id(pck_address[0], dev_type, dev_id)
 
+            # Sync new device with clients
+            for i in clients:
+                syn_data = "syn:" + dev_type + ":" + str(dev_id) + ":None"
+                queue_packet((i.dev_address, syn_data))
+
     # Device update packets
     elif pck_arr[0] == "upd":
         print("Updating device parameters")
@@ -152,6 +159,14 @@ def rec_packet():
                 print("Updated device value for: " + dev_type + ":" + dev_id + ", to: " + dev_value)
                 break
 
+        # Forward update packets to synced sensors
+        dev_str = dev_type + ":" + dev_id
+        for i in clients:
+            if dev_str in i.dev_subs:
+                # Convert upd to syn packet and send to client
+                new_pck = "syn:" + pck_arr[1] + ":" + pck_arr[2] + ":" + pck_arr[3]
+                queue_packet((i.dev_address, new_pck))
+
     # Client sync packets
     elif pck_arr[0] == "syn":
         dev_type = pck_arr[1]
@@ -162,29 +177,29 @@ def rec_packet():
         # Sync sensors
         for i in sensors:
             # Send device value if client is subscribed to sensor
-            syn_value = i.dev_value if int(i.dev_id) in clients[int(dev_id)].dev_subs else None
-            syn_data = "syn:" + str(i.dev_type) + ":" + str(i.dev_id) + ":" + str(syn_value)
+            syn_device = str(i.dev_type) + ":" + str(i.dev_id)
+            syn_value = i.dev_value if syn_device in clients[int(dev_id)].dev_subs else None
+            syn_data = "syn:" + syn_device + ":" + str(syn_value)
             queue_packet([clients[int(dev_id)].dev_address, syn_data])
 
         # Sync actuators
         for i in actuators:
-            syn_data = "syn:" + str(i.dev_type) + ":" + str(i.dev_id) + ":" + str(i.dev_value)
+            # Send device value if client is subscribed to sensor
+            syn_device = str(i.dev_type) + ":" + str(i.dev_id)
+            syn_value = i.dev_value if syn_device in clients[int(dev_id)].dev_subs else None
+            syn_data = "syn:" + syn_device + ":" + str(syn_value)
             queue_packet([clients[int(dev_id)].dev_address, syn_data])
-
-        # Send sync end signal
-        print("Sending sync end signal")
-        syn_data = "syn:end:0:0"
-        queue_packet([clients[int(dev_id)].dev_address, syn_data])
 
     # Client subscription packets
     elif pck_arr[0] == "sub":
         dev_type = pck_arr[1]
         dev_id = pck_arr[2]
+        dev_sub_type = pck_arr[3]
         dev_sub_id = pck_arr[4]
 
         if int(dev_id) <= len(sensors):
             print("Subscription request from: " + dev_type + ":" + dev_id)
-            clients[int(dev_id)].dev_subs.append(dev_sub_id)
+            clients[int(dev_id)].dev_subs.append(dev_sub_type + ":" + dev_sub_id)
 
     # Client publish packets
     elif pck_arr[0] == "pub":
@@ -206,18 +221,26 @@ def rec_packet():
 
 
 # Send packets from queue
-def send_packet():
-    for i in queue:
-        print("Sending packet: " + i[1] + ", To: " + i[0])
-        s.sendto(i[1].encode("utf-8"), (i[0], port))
+class SendPacket (threading.Thread):
+    def run(self):
+        while True:
+            # Sleep for a few seconds to stop packet spam
+            time.sleep(3.0)
 
-        # If i is an acknowledge packet, remove it from queue
-        if i[1][0:3] == "ack":
-            print("Removing acknowledgment: " + i[1])
-            queue.remove(i)
+            for i in queue:
+                print("Sending packet: " + i[1] + ", To: " + i[0])
+                s.sendto(i[1].encode("utf-8"), (i[0], port))
 
+                # If i is an acknowledge packet, remove it from queue
+                if i[1][0:3] == "ack":
+                    print("Removing acknowledgment: " + i[1])
+                    queue.remove(i)
+
+
+# Start SendPacket thread
+send_packet = SendPacket()
+send_packet.start()
 
 # Main function loop
 while True:
     rec_packet()
-    send_packet()
