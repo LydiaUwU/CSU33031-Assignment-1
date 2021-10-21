@@ -65,6 +65,7 @@ def send_dev_id(dev_ip, dev_type, dev_id):
 
 
 # Process incoming packets
+# TODO: Error checking/catching for malformed packets
 def rec_packet():
     print("Awaiting packet")
 
@@ -203,9 +204,9 @@ def rec_packet():
 
     # Client publish packets
     elif pck_arr[0] == "pub":
-        dev_type = pck_arr[1]
-        dev_id = pck_arr[2]
-        dev_data = pck_arr[3]
+        dev_type = pck_arr[3]
+        dev_id = pck_arr[4]
+        dev_data = pck_arr[5]
 
         if int(dev_id) <= len(actuators):
             print("Publish request from: " + dev_type + ":" + dev_id)

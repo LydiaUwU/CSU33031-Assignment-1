@@ -138,8 +138,15 @@ def rec_packet():
         send_ack(pck_address, pck_str)
 
 
+# Sync devices with server
+def sync():
+    print("Syncing devices with server")
+    syn_data = "syn:" + dev_type + ":" + dev_id
+    queue_packet([server_ip, syn_data])
+
+
 # Process input from user
-# TODO: Block threads from printing when prompt is displayed
+# TODO: Error checking/catching for malformed inputs
 class ProcessInput(threading.Thread):
     def run(self):
         global running
@@ -152,9 +159,7 @@ class ProcessInput(threading.Thread):
 
             # sync: Sync device list with server
             if user_in == "sync":
-                print("Syncing devices with server")
-                syn_data = "syn:" + dev_type + ":" + dev_id
-                queue_packet([server_ip, syn_data])
+                sync()
 
             # ls (-sensors, -actuators): List sensor/actuator devices
             elif user_in[0:2] == "ls":
@@ -184,37 +189,46 @@ class ProcessInput(threading.Thread):
                 user_type = user_str[0]
                 user_id = user_str[1]
 
+                valid_input = True
                 if user_type == '1':  # Sensors
                     if int(user_id) > len(sensors):
                         print("Invalid device ID")
-                        return
+                        valid_input = False
 
                 elif user_type == 2:  # Actuators
-                    print("Can't subscribe to actuators!")
-                    return
+                    if int(user_id) > len(actuators):
+                        print("Invalid device ID")
+                        valid_input = False
 
                 else:
-                    print("Invalid device ID")
-                    return
+                    print("Invalid device Type")
+                    valid_input = False
 
-                sub_data = "sub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
-                print("Subscribing to device: " + sub_data)
-                queue_packet([server_ip, sub_data])
+                if valid_input:
+                    sub_data = "sub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
+                    print("Subscribing to device: " + sub_data)
+                    queue_packet([server_ip, sub_data])
 
-                # TODO: Run sync after subscribing
+                # Run sync after subscribing
+                sync()
 
             # pub <ID> <value>: Publish command to actuator
             elif user_in[0:3] == "pub":
                 user_str = user_in[4:].split(":")
                 user_type = user_str[0]
 
+                valid_input = True
                 if user_type != '2':
                     print("Only actuators can receive commands!")
-                    return
+                    valid_input = False
 
-                pub_data = "pub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
-                print("Publishing command: " + pub_data)
-                queue_packet([server_ip, pub_data])
+                if valid_input:
+                    pub_data = "pub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
+                    print("Publishing command: " + pub_data)
+                    queue_packet([server_ip, pub_data])
+
+                # Run sync after publishing
+                sync()
 
             # debug: Display debug output
             elif user_in == "debug":
