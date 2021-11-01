@@ -1,10 +1,15 @@
 # Actuator device to receive commands from Server
 # Author: Lydia MacBride
-
+import random
 import socket
 
 
 print("Starting actuator")
+
+# List of possible device groups, will be randomly assigned for demonstration purposes
+groups = ["blinds", "air-conditioners", "signs", "fans"]
+group = random.choice(groups)
+print("Group is: " + group)
 
 # Device parameters
 port = 4444
@@ -71,6 +76,10 @@ def rec_packet():
     pck_arr = pck_str.split(':')
     print("Received packet: " + pck_str + ", From: " + pck_address[0])
 
+    # Send acknowledgement
+    if pck_arr[0] != "ack":
+        send_ack(pck_address, pck_str)
+
     # Process various commands from devices
     # Acknowledge packets
     if pck_arr[0] == "ack":
@@ -80,9 +89,9 @@ def rec_packet():
         ack_type = pck_str[8:]
 
         # Remove queued request if match found
-        for i in queue:
-            if i[1] == ack_type:
-                queue.remove(i)
+        for pck in queue:
+            if pck[1] == ack_type:
+                queue.remove(pck)
                 break
 
     # Publish command packet
@@ -92,21 +101,20 @@ def rec_packet():
         global dev_value
         dev_value = pck_arr[3]  # update dev_value with incoming data
 
-    else:
-        # Send acknowledgement
-        send_ack(pck_address, pck_str)
+        # Send updated value back to server
+        send_value()
 
 
 # Send packets from queue
 def send_packet():
-    for i in queue:
-        print("Sending packet: " + i[1] + ", To: " + i[0])
-        s.sendto(i[1].encode("utf-8"), (i[0], port))
+    for pck in queue:
+        print("Sending packet: " + pck[1] + ", To: " + pck[0])
+        s.sendto(pck[1].encode("utf-8"), (pck[0], port))
 
         # If i is an acknowledge packet, remove it from queue
-        if i[1][0:3] == "ack":
-            print("Removing acknowledgment: " + i[1])
-            queue.remove(i)
+        if pck[1][0:3] == "ack":
+            print("Removing acknowledgment: " + pck[1])
+            queue.remove(pck)
 
 
 # Initialisation
@@ -123,7 +131,7 @@ while True:
 # Send new device packet to server
 while dev_id == "":
     print("Sending device information request to server")
-    new_data = "new:" + dev_type
+    new_data = "new:" + dev_type + ":" + group
     queue_packet([server_ip, new_data])
     send_packet()
 

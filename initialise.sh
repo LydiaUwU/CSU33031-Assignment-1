@@ -2,9 +2,16 @@
 # Author: Lydia MacBride
 
 # Variables
-# TODO: Arguments to adjust variables
-sensor_count=3
-actuator_count=1
+if [ $# -eq 0 ] || [ $# -eq 1 ]
+  then
+    # Defaults when no arguments provided
+    sensor_count=3
+    actuator_count=3
+else
+  sensor_count=$1
+  actuator_count=$2
+fi
+
 subnet=172.20.0.0/16
 
 echo "🌙 Beginning initialisation"
@@ -43,13 +50,13 @@ done
  sudo docker build -t a1-actuator ./actuator
 
  for ((i=0; i < actuator_count; i++)) do
-   sudo docker container create --name "a1-actuator" --cap-add=ALL a1-actuator
+   sudo docker container create --name "a1-actuator$i" --cap-add=ALL a1-actuator
    echo -e "\n🌐 Connecting container a1-actuator$i to network"
    sudo docker network connect a1-network a1-actuator"$i"
  done
 
 # List created containers
-echo -e "\n🐳 The folllowing containers were created"
+echo -e "\n🐳 The following containers were created"
 sudo docker container ls -a -f name="a1-*"
 
 # Ask input on whether to launch or not

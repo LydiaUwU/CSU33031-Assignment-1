@@ -9,10 +9,11 @@
 # - dev_value: Devices value (i.e. temperature)
 class Device:
     # Constructor
-    def __init__(self, dev_type, dev_id, dev_address):
+    def __init__(self, dev_type, dev_id, dev_address, dev_group):
         self.dev_type = dev_type
         self.dev_id = dev_id
         self.dev_address = dev_address
+        self.dev_group = dev_group
         self.dev_subs = list()  # Only used by client devices
         self.dev_value = None
 

@@ -10,11 +10,12 @@
 # TODO: Name parameter
 class Device:
     # Constructor
-    def __init__(self, dev_type, dev_id, dev_subbed, dev_value):
+    def __init__(self, dev_type, dev_id, dev_subbed, dev_value, dev_group):
         self.dev_type = dev_type
         self.dev_id = dev_id
         self.dev_subbed = dev_subbed
         self.dev_value = dev_value
+        self.dev_group = dev_group
 
     def update(self, dev_value):
         self.dev_value = dev_value
