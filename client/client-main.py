@@ -1,6 +1,5 @@
 # Client providing CLI for user to interact with network
 # Author: Lydia MacBride
-# TODO: Move classes to own python scripts
 
 import socket
 import threading
@@ -14,6 +13,7 @@ port = 4444
 buff_size = 4096
 dev_type = "3"
 dev_id = ""
+group = "clients"
 server_ip = ""
 queue = list()
 debug = False
@@ -79,6 +79,10 @@ def rec_packet():
     pck_arr = pck_str.split(':')
     print_d("Received packet: " + pck_str + ", From: " + pck_address[0])
 
+    # Send acknowledgement
+    if pck_arr[0] != "ack":
+        send_ack(pck_address, pck_str)
+
     # Process various commands from devices
     # Acknowledge packets
     if pck_arr[0] == "ack":
@@ -102,8 +106,8 @@ def rec_packet():
 
         # Find matching device id and update upd_value
         for i in (sensors if upd_type == '1' else actuators):
-            print_d("Checking device: " + str(i.get_upd_type()) + ":" + str(i.get_upd_id()))
-            if upd_id == str(i.get_upd_id()):
+            print_d("Checking device: " + str(i.get_dev_type()) + ":" + str(i.get_dev_id()))
+            if upd_id == str(i.get_dev_id()):
                 i.update(upd_value)
                 print_d("Updated device value for: " + upd_type + ":" + upd_id + ", to: " + upd_value)
                 break
@@ -112,30 +116,27 @@ def rec_packet():
     elif pck_arr[0] == "syn":
         syn_type = pck_arr[1]
         syn_id = pck_arr[2]
-        syn_data = pck_arr[3]
+        syn_group = pck_arr[3]
+        syn_data = pck_arr[4]
 
         print_d("Sync packet received")
         if syn_type == '1':
             if int(syn_id) > len(sensors) - 1:
                 sensors.extend([None] * (int(syn_id) - (len(sensors) - 1)))
 
-            sensors[int(syn_id)] = devices.Device(syn_type, syn_id, False, syn_data)
+            sensors[int(syn_id)] = devices.Device(syn_type, syn_id, False, syn_data, syn_group)
 
         elif syn_type == '2':
             if int(syn_id) > len(actuators) - 1:
                 actuators.extend([None] * (int(syn_id) - (len(actuators) - 1)))
 
-            actuators[int(syn_id)] = devices.Device(syn_type, syn_id, False, syn_data)
+            actuators[int(syn_id)] = devices.Device(syn_type, syn_id, False, syn_data, syn_group)
 
         else:
             print_d("Invalid device type received")
 
     else:
         print_d("Unknown packet type received: " + pck_arr[0])
-
-    # Send acknowledgement
-    if pck_arr[0] != "ack":
-        send_ack(pck_address, pck_str)
 
 
 # Sync devices with server
@@ -146,7 +147,6 @@ def sync():
 
 
 # Process input from user
-# TODO: Error checking/catching for malformed inputs
 class ProcessInput(threading.Thread):
     def run(self):
         global running
@@ -168,64 +168,105 @@ class ProcessInput(threading.Thread):
                 # List sensors
                 if args[0] or args[0] == args[1]:
                     print("\nSensors\n" +
-                          "ID\t\tData")
+                          "ID\t\tGroup\t\t\tData")
 
                     for i in sensors:
-                        print(str(i.dev_type) + ":" + str(i.dev_id) + "\t\t" + str(i.dev_value))
+                        if i is not None:
+                            spacer = "\t"
+                            if len(i.dev_group) < 8:
+                                spacer = "\t\t\t"
+                            elif len(i.dev_group) < 16:
+                                spacer = "\t\t"
+
+                            print(str(i.dev_type) + ":" + str(i.dev_id) + "\t\t" + i.dev_group + spacer + str(i.dev_value))
 
                 # List actuators
                 if args[1] or args[0] == args[1]:
                     print("\nActuators\n" +
-                          "ID\t\tData")
+                          "ID\t\tGroup\t\t\tData")
 
                     for i in actuators:
-                        print(str(i.dev_type) + ":" + str(i.dev_id) + "\t\t" + str(i.dev_value))
+                        if i is not None:
+                            spacer = "\t"
+                            if len(i.dev_group) < 8:
+                                spacer = "\t\t\t"
+                            elif len(i.dev_group) < 16:
+                                spacer = "\t\t"
+
+                            print(str(i.dev_type) + ":" + str(i.dev_id) + "\t\t" + i.dev_group + spacer + str(i.dev_value))
 
                 print("")
 
-            # sub <ID>: Subscribe to sensor data
+            # sub (-i) <group>: Subscribe to sensor data
             elif user_in[0:3] == "sub":
-                user_str = user_in[4:].split(":")
-                user_type = user_str[0]
-                user_id = user_str[1]
+                # Sub with Type:ID
+                if user_in[4:6] == "-i":
+                    user_arr = user_in[7:].split(":")
+                    if len(user_arr) == 2:
+                        user_type = user_arr[0]
+                        user_id = user_arr[1]
 
-                valid_input = True
-                if user_type == '1':  # Sensors
-                    if int(user_id) > len(sensors):
-                        print("Invalid device ID")
-                        valid_input = False
+                        valid_input = True
+                        if user_type == '1':  # Sensors
+                            if int(user_id) > len(sensors):
+                                print("Invalid device ID")
+                                valid_input = False
 
-                elif user_type == 2:  # Actuators
-                    if int(user_id) > len(actuators):
-                        print("Invalid device ID")
-                        valid_input = False
+                        elif user_type == '2':  # Actuators
+                            if int(user_id) > len(actuators):
+                                print("Invalid device ID")
+                                valid_input = False
 
+                        else:
+                            print("Invalid device Type")
+                            valid_input = False
+
+                        if valid_input:
+                            sub_data = "sub:" + dev_type + ":" + dev_id + ":" + user_type + ":" + user_id
+                            print("Subscribing to device: " + sub_data)
+                            queue_packet([server_ip, sub_data])
+
+                # Sub with group
                 else:
-                    print("Invalid device Type")
-                    valid_input = False
+                    user_group = user_in[4:]
 
-                if valid_input:
-                    sub_data = "sub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
-                    print("Subscribing to device: " + sub_data)
+                    sub_data = "sub:" + dev_type + ":" + dev_id + ":g:" + user_group
+                    print("Subscribing to group: " + user_group)
                     queue_packet([server_ip, sub_data])
 
                 # Run sync after subscribing
                 sync()
 
-            # pub <ID> <value>: Publish command to actuator
-            elif user_in[0:3] == "pub":
-                user_str = user_in[4:].split(":")
-                user_type = user_str[0]
+            # pub (-i) <group> <value>: Publish command to actuator
+            elif user_in[0:3] == "pub" and len(user_in) > 4:
+                # Pub with Type:ID
+                if user_in[4:6] == "-i":
+                    user_arr = user_in[7:].split(":")
+                    user_type = user_arr[0]
+                    user_id = user_arr[1]
+                    user_data = user_arr[2]
 
-                valid_input = True
-                if user_type != '2':
-                    print("Only actuators can receive commands!")
-                    valid_input = False
+                    valid_input = True
+                    if user_type != '2':
+                        print("Only actuators can receive commands!")
+                        valid_input = False
 
-                if valid_input:
-                    pub_data = "pub:" + dev_type + ":" + dev_id + ":" + user_in[4:]
-                    print("Publishing command: " + pub_data)
-                    queue_packet([server_ip, pub_data])
+                    if valid_input:
+                        pub_data = "pub:" + dev_type + ":" + dev_id + ":" + user_type + ":" + user_id + ":" + user_data
+                        print("Publishing command: " + pub_data)
+                        queue_packet([server_ip, pub_data])
+
+                # Pub with group
+                else:
+                    user_arr = user_in[4:].split(" ")
+
+                    if len(user_arr) == 2:
+                        user_group = user_arr[0]
+                        user_value = user_arr[1]
+
+                        pub_data = "pub:" + dev_type + ":" + dev_id + ":g:" + user_group + ":" + user_value
+                        print("Publishing command: " + pub_data)
+                        queue_packet([server_ip, pub_data])
 
                 # Run sync after publishing
                 sync()
@@ -245,8 +286,8 @@ class ProcessInput(threading.Thread):
             elif user_in == "help":
                 print("sync                         Sync device list with server\n" +
                       "ls (-sensors, -actuators)    List sensor/actuator devices\n" +
-                      "sub <Type>:<ID>              Subscribe to sensor data\n" +
-                      "pub <Type>:<ID> <value>      Publish command to actuator\n" +
+                      "sub (-i) <group>             Subscribe to sensor data (use -i to specify ID instead)\n" +
+                      "pub (-i) <group> <value>     Publish command to actuator (use -i to specify ID instead)\n" +
                       "debug                        Display debug output\n" +
                       "exit                         Stop and exit client\n" +
                       "help                         print available commands")
@@ -292,7 +333,7 @@ while True:
 # Send new device packet to server
 while dev_id == "":
     print("Sending device information request to server")
-    new_data = "new:" + dev_type
+    new_data = "new:" + dev_type + ":" + group
     queue_packet([server_ip, new_data])
 
     # Receive device info from server
@@ -321,6 +362,9 @@ while dev_id == "":
             # Send acknowledgement
             print("Sending acknowledgement")
             send_ack(new_address, new_str)
+
+# Sync devices on launch
+sync()
 
 # Start ProcessInput thread
 proc_input = ProcessInput()
